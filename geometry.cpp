@@ -1,147 +1,219 @@
 #include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <math.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#define _CRT_SECURE_NO_WARNINGS
+#define MAXSIZE 50
+#define NORMVALUE 1
+
+typedef struct {
+    double r;
+    int x;
+    int y;
+    int space;
+    int comma;
+    int open_bracket;
+    int close_bracket;
+} Circle;
+
+typedef struct {
+    double perimeter;
+    double area;
+} Calculations;
+
+Calculations circle_compute(char *circle, double radius);
+
+int radius_check(char *figure, int indx1, int indx2);
+
+int point_check(char *figure, int indx1, int indx2);
+
+int control_count(int norm, int get_count);
+
+Circle circle_wkt_check(char *circle_figure, int circle_length);
+
+int wkt_check(char *figure, int figure_length);
+
 int main()
 {
-    double x, y, r;
-    char str[100];
-    int flag = 0;
-    char circle[7] = "circle";
-    char* point = str;
-    char* start_point;
-    char* last_point = str;
-    char* end;
+    char object[MAXSIZE];
+    printf("Enter the type of the figure: ");
+    scanf("%[^\n]s", object);
+    int object_len = strlen(object);
 
-    fgets(str, sizeof(str), stdin);
+    int figure_define = wkt_check(object, object_len);
+    if (figure_define == 1) {
+        Circle tokens;
+        tokens = circle_wkt_check(object, object_len);
 
-    while (isalpha(*last_point) != 0)
-        last_point++;
+        Calculations result_calc;
+        result_calc = circle_compute(object, tokens.r);
 
-    if ((last_point - point) <= 6) {
-        if (strncmp(str, circle, 6) == 0)
-            flag = 1;
-    } else if (strncmp(str, circle, last_point - point) == 0)
-        flag = 1;
-    if (flag == 1) {
-        flag = 0;
-        point = last_point;
-        start_point = point;
+        printf("%s\n", object);
+        printf("    perimeter = %lf\n", result_calc.perimeter);
+        printf("    area = %lf\n", result_calc.area);
+    }
+    return 0;
+}
 
-        while (*start_point != 10) {
-            if (*start_point == '(') {
-                point = start_point;
-                flag = 1;
-                break;
+int wkt_check(char *figure, int figure_length)
+{
+    int i, n;
+    char example_circle[] = "circle(x y, r)";
+
+    for (i = 0; (figure[i] != '(') && (i < figure_length); ++i) {
+        n = i;
+    }
+    if (n == 5) {
+        for (i = 0; i < n; ++i) {
+            if (tolower(figure[i]) != example_circle[i]) {
+                printf("Error at column %d: expected 'circle'\n", i);
+                exit(EXIT_FAILURE);
             }
-            start_point++;
-        }
-
-        if (flag == 0) {
-            printf("ERROR: expected 'circle' (\n");
-            return 0;
-        }
-
-        while (isdigit(*point) == 0) // First number
-        {
-            if ((*point == ' ') || (*point == '('))
-                point++;
             else {
-                printf("ERROR X\n");
-                return 0;
+                figure[i] = tolower(figure[i]);
+                continue;
             }
         }
+        return 1;
+    }
+    //else if (n == 6) {
+        //polygon check
+    //}
+    //else if (n == 7) {
+        //triangle check
+    //}
+    else {
+        printf("Error at column %d: expected 'circle'\n", n + 1);
+        exit(EXIT_FAILURE);
+    }
+    return 0;
+}
 
-        if (isdigit(*point) != 0) {
-            x = strtod(point, &end);
-            point = end;
-            printf("x=%f\n", x);
+Circle circle_wkt_check(char *circle_figure, int circle_length)
+{
+    Circle circle_tokens;
+    int i, tmp1, tmp2, tmp3, tmp4;
+    tmp1 = tmp2 = tmp3 = tmp4 = 0;
+
+    for (i = 0; i < circle_length; ++i) {
+        if (circle_figure[i] == '(') {
+            circle_tokens.open_bracket = i;
+            tmp1++;
         }
+        if ((circle_figure[i] == ' ') && (isdigit(circle_figure[i - 1]) != 0)){
+            circle_tokens.space = i;
+            tmp2++;
+        }
+        if (circle_figure[i] == ',') {
+            circle_tokens.comma = i;
+            tmp3++;
+        }
+        if (circle_figure[i] == ')') {
+            circle_tokens.close_bracket = i;
+            tmp4++;
+        }
+    }
+    int cntrlcount = control_count(NORMVALUE, tmp1) + control_count(NORMVALUE, tmp2) + control_count(NORMVALUE, tmp3) + control_count(NORMVALUE, tmp4);
+    if (cntrlcount != 4) {
+        printf("Error: unexpected token\n");
+        exit(EXIT_FAILURE);
+    }
+    else {
+        if (circle_figure[circle_tokens.close_bracket + 1] != '\0') {
+            printf("Error at column %d: unexpected token\n", circle_tokens.close_bracket + 1);
+            exit(EXIT_FAILURE);
+        }
+        int checker = point_check(circle_figure, circle_tokens.open_bracket, circle_tokens.space);
+        if (checker != 0) {
+            int j = 0;
+            char coordX[circle_tokens.space - circle_tokens.open_bracket];
+            for (i = circle_tokens.open_bracket + 1; i < circle_tokens.space; ++i) {
+                coordX[j] = circle_figure[i];
+                j++;
+            }
+            circle_tokens.x = atoi(coordX);
 
-        while (isdigit(*point) == 0) // Second number
-        {
-            if (*point == ' ')
-                point++;
-            else {
-                printf("ERROR Y\n");
-                return 0;
+            checker = point_check(circle_figure, circle_tokens.space, circle_tokens.comma);
+            if (checker != 0) {
+                j = 0;
+                char coordY[circle_tokens.comma - circle_tokens.space];
+                for (i = circle_tokens.space; i < circle_tokens.comma; ++i) {
+                    coordY[j] = circle_figure[i];
+                    j++;
+                }
+                circle_tokens.y = atoi(coordY);
+
+                checker = radius_check(circle_figure, circle_tokens.comma, circle_tokens.close_bracket);
+                if (checker != 0) {
+                    j = 0;
+                    char rad[circle_tokens.close_bracket - circle_tokens.comma];
+                    for (i = circle_tokens.comma + 1; i < circle_tokens.close_bracket; ++i) {
+                        rad[j] = circle_figure[i];
+                        j++;
+                    }
+                    circle_tokens.r = atof(rad);
+                }
             }
         }
+    }
+    return circle_tokens;
+}
 
-        if (isdigit(*point) != 0) {
-            y = strtod(point, &end);
-            point = end;
-            printf("y= %f\n", y);
-        }
-
-        start_point = point;
-        flag = 0;
-
-        while (*start_point != 10) {
-            if ((*start_point != ' ') && (*start_point != ',')) {
-                printf("ERROR ,\n");
-                return 0;
-            } else if (*start_point == ',') {
-                point = start_point;
-                flag = 1;
-                break;
-            } else
-                start_point++;
-        }
-
-        if (flag == 0)
-            printf("ERROR ,");
-
-        while (isdigit(*point) == 0) // Third number
-        {
-            if ((*point == ' ') || (*point == ','))
-                point++;
-            else {
-                printf("ERROR Radius\n");
-                return 0;
-            }
-        }
-
-        if (isdigit(*point) != 0) {
-            r = strtod(point, &end);
-            point = end;
-            printf("r=%f\n", r);
-        }
-
-        flag = 0;
-        start_point = point;
-
-        while (*start_point != 10) {
-            if ((*start_point != ' ') && (*start_point != ')')) {
-                printf("ERROR )\n");
-                return 0;
-            } else if (*start_point == ')') {
-                point = start_point;
-                flag = 1;
-                break;
-            } else
-                start_point++;
-        }
-
-        if (flag == 0) {
-            printf("ERROR )\n");
-            return 0;
-        }
-
-        point++;
-
-        while (*point != 10) {
-            if (*point != ' ') {
-                printf("ERROR: no items expected\n");
-                return 0;
-            } else
-                point++;
-        }
-        printf("data entered correctly\n");
+int control_count(int norm, int get_count)
+{
+    if (norm == get_count) {
+        return 1;
+    }
+    else {
         return 0;
     }
+}
 
-    else
-        printf("ERROR: expected 'circle'\n");
-    return 0;
+int point_check(char *figure, int indx1, int indx2)
+{
+    int i;
+    int checker = 0;
+    for (i = indx1 + 1; i < indx2; ++i) {
+        if (isdigit(figure[i]) != 0) {
+            checker = 1;
+        }
+        else if ((figure[i] == ' ') || (((figure[i] == '+') || (figure[i] == '-')) && (isdigit(figure[i + 1]) != 0))) {
+            continue;
+        }
+        else {
+            printf("Error at column %d: expected '<int>'\n", i);
+            exit(EXIT_FAILURE);
+        }
+    }
+    return checker;
+}
+
+int radius_check(char *figure, int indx1, int indx2)
+{
+    int i;
+    int checker = 0;
+    for (i = indx1 + 1; i < indx2; ++i) {
+        if (isdigit(figure[i]) != 0) {
+            checker = 1;
+        }
+        else if ((figure[i] == ' ') || (((figure[i] == '+') || (figure[i] == '.')) && (isdigit(figure[i + 1]) != 0) && (isdigit(figure[i - 1]) != 0))) {
+            continue;
+        }
+        else {
+            printf("Error at column %d: expected positive '<double>'\n", i);
+            exit(EXIT_FAILURE);
+        }
+    }
+    return checker;
+}
+
+Calculations circle_compute(char *circle, double radius)
+{
+    Calculations result;
+    result.perimeter = 2 * M_PI * radius;
+    result.area = M_PI * pow(radius, 2);
+
+    return result;
 }

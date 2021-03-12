@@ -145,4 +145,3 @@ int main()
         printf("ERROR: expected 'circle'\n");
     return 0;
 }
-© 2021 GitHub, Inc.
